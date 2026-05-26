@@ -6,28 +6,36 @@ from datetime import datetime
 # =========================
 # FILE SETUP
 # =========================
+
 FILE_NAME = "messages.txt"
 
+# Create file if it does not exist
 if not os.path.exists(FILE_NAME):
     open(FILE_NAME, "w").close()
 
+# Used to hide/show messages
 show_state = {"visible": False}
 
 # =========================
 # FILE FUNCTIONS
 # =========================
 
+
 def load_messages():
     try:
         messages = []
+
         with open(FILE_NAME, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
+
                 if "|" in line:
                     parts = line.split("|", 2)
+
                     if len(parts) == 3:
                         msg_id, msg_time, msg_text = parts
                         messages.append((int(msg_id), msg_time, msg_text))
+
         return messages
 
     except Exception as e:
@@ -35,14 +43,15 @@ def load_messages():
         return []
 
 
+
 def save_message(msg):
     try:
         messages = load_messages()
 
-        # safer ID (prevents duplication after delete)
+        # Generate safe message ID
         msg_id = messages[-1][0] + 1 if messages else 1
 
-        # FULL timestamp (date + time)
+        # Current date and time
         time_now = datetime.now().strftime("%Y-%m-%d %I:%M %p")
 
         with open(FILE_NAME, "a", encoding="utf-8") as f:
@@ -52,6 +61,7 @@ def save_message(msg):
 
     except Exception as e:
         messagebox.showerror("Error", f"Save error: {e}")
+
 
 
 def rewrite_file(messages):
@@ -68,6 +78,7 @@ def rewrite_file(messages):
 # FEATURES
 # =========================
 
+
 def send_message():
     msg = entry.get().strip()
 
@@ -76,14 +87,21 @@ def send_message():
         return
 
     msg_id, time_now = save_message(msg)
+
     entry.delete(0, tk.END)
 
-    messagebox.showinfo("Saved 💌", f"Message saved #{msg_id} at {time_now}")
+    messagebox.showinfo(
+        "Saved 💌",
+        f"Message saved #{msg_id} at {time_now}"
+    )
+
     show_messages()
+
 
 
 def show_messages():
     listbox.delete(0, tk.END)
+
     messages = load_messages()
 
     if not messages:
@@ -91,10 +109,19 @@ def show_messages():
         return
 
     for msg_id, time, msg in messages:
+
         if show_state["visible"]:
-            listbox.insert(tk.END, f"💌 Message {msg_id}: {msg} ({time})")
+            listbox.insert(
+                tk.END,
+                f"💌 Message {msg_id}: {msg} ({time})"
+            )
+
         else:
-            listbox.insert(tk.END, f"📜 Message {msg_id} (hidden)")
+            listbox.insert(
+                tk.END,
+                f"📜 Message {msg_id} (hidden)"
+            )
+
 
 
 def toggle_show():
@@ -102,14 +129,19 @@ def toggle_show():
     show_messages()
 
 
+
 def delete_message():
     selected = listbox.curselection()
 
     if not selected:
-        messagebox.showwarning("Warning 🗑️", "Select a message first!")
+        messagebox.showwarning(
+            "Warning 🗑️",
+            "Select a message first!"
+        )
         return
 
     index = selected[0]
+
     messages = load_messages()
 
     if index < len(messages):
@@ -119,21 +151,30 @@ def delete_message():
     show_messages()
 
 
+
 def search_message():
-    keyword = simpledialog.askstring("Search 🔍", "Enter keyword:")
+    keyword = simpledialog.askstring(
+        "Search 🔍",
+        "Enter keyword:"
+    )
 
     if not keyword:
         return
 
     keyword = keyword.lower()
-    listbox.delete(tk.END)
+
+    listbox.delete(0, tk.END)
 
     messages = load_messages()
     found = False
 
     for msg_id, time, msg in messages:
+
         if keyword in msg.lower():
-            listbox.insert(tk.END, f"💖 {msg} ({time})")
+            listbox.insert(
+                tk.END,
+                f"💖 {msg} ({time})"
+            )
             found = True
 
     if not found:
@@ -149,9 +190,13 @@ root.title("💬 Pink Messenger")
 root.geometry("520x650")
 root.configure(bg="#ffd6e8")
 
+# =========================
 # HEADER
+# =========================
+
 header = tk.Frame(root, bg="#ff4da6", height=100)
 header.pack(fill="x")
+
 
 tk.Label(
     header,
@@ -161,19 +206,19 @@ tk.Label(
     fg="white"
 ).pack(pady=5)
 
-tk.Label(
-    header,
-    text="Send, store, and manage messages 💌",
-    bg="#ff4da6",
-    fg="white"
-).pack()
 
-# INPUT
+
+
+# =========================
+# INPUT AREA
+# =========================
+
 input_card = tk.Frame(root, bg="white")
 input_card.pack(pady=15, padx=15, fill="x")
 
 entry = tk.Entry(input_card, font=("Arial", 13), bd=0)
 entry.pack(padx=12, pady=12, fill="x")
+
 
 tk.Button(
     input_card,
@@ -185,7 +230,10 @@ tk.Button(
     command=send_message
 ).pack(pady=5)
 
+# =========================
 # BUTTONS
+# =========================
+
 btn_frame = tk.Frame(root, bg="#ffd6e8")
 btn_frame.pack(pady=10)
 
@@ -196,16 +244,37 @@ btn_style = {
     "width": 16
 }
 
-tk.Button(btn_frame, text="📜 Show Messages",
-          bg="#ff66b2", command=toggle_show, **btn_style).grid(row=0, column=0, padx=5)
 
-tk.Button(btn_frame, text="🔍 Search",
-          bg="#ff99cc", command=search_message, **btn_style).grid(row=0, column=1, padx=5)
+tk.Button(
+    btn_frame,
+    text="📜 Show Messages",
+    bg="#ff66b2",
+    command=toggle_show,
+    **btn_style
+).grid(row=0, column=0, padx=5)
 
-tk.Button(btn_frame, text="🗑️ Delete",
-          bg="#ff3385", command=delete_message, **btn_style).grid(row=0, column=2, padx=5)
 
+tk.Button(
+    btn_frame,
+    text="🔍 Search",
+    bg="#ff99cc",
+    command=search_message,
+    **btn_style
+).grid(row=0, column=1, padx=5)
+
+
+tk.Button(
+    btn_frame,
+    text="🗑️ Delete",
+    bg="#ff3385",
+    command=delete_message,
+    **btn_style
+).grid(row=0, column=2, padx=5)
+
+# =========================
 # CHAT AREA
+# =========================
+
 chat_frame = tk.Frame(root, bg="white")
 chat_frame.pack(padx=15, pady=15, fill="both", expand=True)
 
@@ -223,8 +292,17 @@ listbox = tk.Listbox(
 )
 
 listbox.pack(fill="both", expand=True, padx=10, pady=10)
+
 scrollbar.config(command=listbox.yview)
 
-# INIT
+# =========================
+# INITIAL LOAD
+# =========================
+
 show_messages()
+
+# =========================
+# START PROGRAM
+# =========================
+
 root.mainloop()
