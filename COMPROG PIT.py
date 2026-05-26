@@ -1,100 +1,230 @@
-from tkinter import *
-from tkinter import messagebox
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+import os
+from datetime import datetime
 
+# =========================
+# FILE SETUP
+# =========================
 FILE_NAME = "messages.txt"
 
-# ---------------- FUNCTIONS ---------------- #
+if not os.path.exists(FILE_NAME):
+    open(FILE_NAME, "w").close()
 
-def send_message():
-    message = entry.get()
+show_state = {"visible": False}
 
-    if message.strip() == "":
-        messagebox.showerror("Error", "Message cannot be empty!")
-        return
+# =========================
+# FILE FUNCTIONS
+# =========================
 
+def load_messages():
     try:
-        with open(FILE_NAME, "a") as file:
-            file.write(message + "\n")
-
-        entry.delete(0, END)
-        display_messages()
+        messages = []
+        with open(FILE_NAME, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if "|" in line:
+                    parts = line.split("|", 2)
+                    if len(parts) == 3:
+                        msg_id, msg_time, msg_text = parts
+                        messages.append((int(msg_id), msg_time, msg_text))
+        return messages
 
     except Exception as e:
-        messagebox.showerror("Error", str(e))
+        messagebox.showerror("Error", f"File read error: {e}")
+        return []
 
 
-def display_messages():
-    listbox.delete(0, END)
-
+def save_message(msg):
     try:
-        with open(FILE_NAME, "r") as file:
-            messages = file.readlines()
+        messages = load_messages()
 
-            for msg in messages:
-                listbox.insert(END, msg.strip())
+        # safer ID (prevents duplication after delete)
+        msg_id = messages[-1][0] + 1 if messages else 1
 
-    except FileNotFoundError:
-        open(FILE_NAME, "w").close()
+        # FULL timestamp (date + time)
+        time_now = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+
+        with open(FILE_NAME, "a", encoding="utf-8") as f:
+            f.write(f"{msg_id}|{time_now}|{msg}\n")
+
+        return msg_id, time_now
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Save error: {e}")
+
+
+def rewrite_file(messages):
+    try:
+        with open(FILE_NAME, "w", encoding="utf-8") as f:
+            for i, (_, t, msg) in enumerate(messages, start=1):
+                f.write(f"{i}|{t}|{msg}\n")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Rewrite error: {e}")
+
+
+# =========================
+# FEATURES
+# =========================
+
+def send_message():
+    msg = entry.get().strip()
+
+    if not msg:
+        messagebox.showwarning("Warning 💔", "Message cannot be empty!")
+        return
+
+    msg_id, time_now = save_message(msg)
+    entry.delete(0, tk.END)
+
+    messagebox.showinfo("Saved 💌", f"Message saved #{msg_id} at {time_now}")
+    show_messages()
+
+
+def show_messages():
+    listbox.delete(0, tk.END)
+    messages = load_messages()
+
+    if not messages:
+        listbox.insert(tk.END, "💔 No messages yet...")
+        return
+
+    for msg_id, time, msg in messages:
+        if show_state["visible"]:
+            listbox.insert(tk.END, f"💌 Message {msg_id}: {msg} ({time})")
+        else:
+            listbox.insert(tk.END, f"📜 Message {msg_id} (hidden)")
+
+
+def toggle_show():
+    show_state["visible"] = not show_state["visible"]
+    show_messages()
 
 
 def delete_message():
     selected = listbox.curselection()
 
     if not selected:
-        messagebox.showerror("Error", "Select a message first!")
+        messagebox.showwarning("Warning 🗑️", "Select a message first!")
         return
 
-    try:
-        with open(FILE_NAME, "r") as file:
-            messages = file.readlines()
+    index = selected[0]
+    messages = load_messages()
 
-        del messages[selected[0]]
+    if index < len(messages):
+        messages.pop(index)
+        rewrite_file(messages)
 
-        with open(FILE_NAME, "w") as file:
-            file.writelines(messages)
-
-        display_messages()
-
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
+    show_messages()
 
 
 def search_message():
-    keyword = entry.get().lower()
+    keyword = simpledialog.askstring("Search 🔍", "Enter keyword:")
 
-    listbox.delete(0, END)
+    if not keyword:
+        return
 
-    try:
-        with open(FILE_NAME, "r") as file:
-            messages = file.readlines()
+    keyword = keyword.lower()
+    listbox.delete(tk.END)
 
-            for msg in messages:
-                if keyword in msg.lower():
-                    listbox.insert(END, msg.strip())
+    messages = load_messages()
+    found = False
 
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
+    for msg_id, time, msg in messages:
+        if keyword in msg.lower():
+            listbox.insert(tk.END, f"💖 {msg} ({time})")
+            found = True
+
+    if not found:
+        listbox.insert(tk.END, "😢 No match found")
 
 
-# ---------------- GUI ---------------- #
+# =========================
+# UI DESIGN
+# =========================
 
-root = Tk()
-root.title("Messaging System")
-root.geometry("500x400")
+root = tk.Tk()
+root.title("💬 Pink Messenger")
+root.geometry("520x650")
+root.configure(bg="#ffd6e8")
 
-Label(root, text="Enter Message:", font=("Arial", 12)).pack(pady=5)
+# HEADER
+header = tk.Frame(root, bg="#ff4da6", height=100)
+header.pack(fill="x")
 
-entry = Entry(root, width=40, font=("Arial", 12))
-entry.pack(pady=5)
+tk.Label(
+    header,
+    text="💬 Pink Messenger",
+    font=("Helvetica", 20, "bold"),
+    bg="#ff4da6",
+    fg="white"
+).pack(pady=5)
 
-Button(root, text="Send Message", command=send_message).pack(pady=5)
-Button(root, text="Display Messages", command=display_messages).pack(pady=5)
-Button(root, text="Delete Message", command=delete_message).pack(pady=5)
-Button(root, text="Search Message", command=search_message).pack(pady=5)
+tk.Label(
+    header,
+    text="Send, store, and manage messages 💌",
+    bg="#ff4da6",
+    fg="white"
+).pack()
 
-listbox = Listbox(root, width=60, height=12)
-listbox.pack(pady=10)
+# INPUT
+input_card = tk.Frame(root, bg="white")
+input_card.pack(pady=15, padx=15, fill="x")
 
-display_messages()
+entry = tk.Entry(input_card, font=("Arial", 13), bd=0)
+entry.pack(padx=12, pady=12, fill="x")
 
+tk.Button(
+    input_card,
+    text="💌 Send Message",
+    bg="#ff4da6",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    bd=0,
+    command=send_message
+).pack(pady=5)
+
+# BUTTONS
+btn_frame = tk.Frame(root, bg="#ffd6e8")
+btn_frame.pack(pady=10)
+
+btn_style = {
+    "font": ("Arial", 10, "bold"),
+    "fg": "white",
+    "bd": 0,
+    "width": 16
+}
+
+tk.Button(btn_frame, text="📜 Show Messages",
+          bg="#ff66b2", command=toggle_show, **btn_style).grid(row=0, column=0, padx=5)
+
+tk.Button(btn_frame, text="🔍 Search",
+          bg="#ff99cc", command=search_message, **btn_style).grid(row=0, column=1, padx=5)
+
+tk.Button(btn_frame, text="🗑️ Delete",
+          bg="#ff3385", command=delete_message, **btn_style).grid(row=0, column=2, padx=5)
+
+# CHAT AREA
+chat_frame = tk.Frame(root, bg="white")
+chat_frame.pack(padx=15, pady=15, fill="both", expand=True)
+
+scrollbar = tk.Scrollbar(chat_frame)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+listbox = tk.Listbox(
+    chat_frame,
+    font=("Arial", 11),
+    bg="white",
+    fg="#333",
+    selectbackground="#ffb6d9",
+    bd=0,
+    yscrollcommand=scrollbar.set
+)
+
+listbox.pack(fill="both", expand=True, padx=10, pady=10)
+scrollbar.config(command=listbox.yview)
+
+# INIT
+show_messages()
 root.mainloop()
